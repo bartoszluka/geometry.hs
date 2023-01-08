@@ -9,6 +9,7 @@ module Triangles (
     baroCenter,
     perpendicularThrough,
     toStr,
+    isParallelTo,
 ) where
 
 import Text.Printf (printf)
@@ -72,3 +73,9 @@ perpendicularThrough (px, py) (Line{coefA = a, coefB = _}) =
     if a == 0
         then Vertical px
         else Line{coefA = -1 / a, coefB = py + 1 / a * px}
+
+isParallelTo :: Line -> Line -> Bool
+isParallelTo (Line{coefA = a1}) (Line{coefA = a2}) =
+    doubleEq a1 a2
+isParallelTo (Vertical _) (Vertical _) = True
+isParallelTo _ _ = False
