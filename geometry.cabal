@@ -1,17 +1,17 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.1.
 --
 -- see: https://github.com/sol/hpack
 
-name:           triangles
+name:           geometry
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/triangles#readme>
-homepage:       https://github.com/githubuser/triangles#readme
-bug-reports:    https://github.com/githubuser/triangles/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2023 Author name here
+description:    Please see the README on GitHub at <https://github.com/bartoszluka/geometry.hs#readme>
+homepage:       https://github.com/bartoszluka/geometry.hs#readme
+bug-reports:    https://github.com/bartoszluka/geometry.hs/issues
+author:         Bartosz Łuka
+maintainer:     bartoszluka1@gmail.com
+copyright:      2023 Bartosz Łuka
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -21,13 +21,13 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/triangles
+  location: https://github.com/bartoszluka/geometry.hs
 
 library
   exposed-modules:
-      Triangles
+      Geometry
   other-modules:
-      Paths_triangles
+      Paths_geometry
   hs-source-dirs:
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
@@ -35,23 +35,23 @@ library
       base >=4.7 && <5
   default-language: Haskell2010
 
-executable triangles-exe
+executable geometry-exe
   main-is: Main.hs
   other-modules:
-      Paths_triangles
+      Paths_geometry
   hs-source-dirs:
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
-    , triangles
+    , geometry
   default-language: Haskell2010
 
-test-suite triangles-test
+test-suite geometry-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_triangles
+      Paths_geometry
   hs-source-dirs:
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
@@ -59,7 +59,7 @@ test-suite triangles-test
       HUnit
     , QuickCheck
     , base >=4.7 && <5
+    , geometry
     , hspec
     , hspec-contrib
-    , triangles
   default-language: Haskell2010

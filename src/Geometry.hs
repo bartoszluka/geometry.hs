@@ -1,6 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Triangles (
+module Geometry (
     lineThrough,
     intersection,
     doubleEq,

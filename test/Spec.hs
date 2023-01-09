@@ -8,7 +8,7 @@ import Control.Monad (liftM2)
 import Test.Hspec (describe, hspec, it, shouldBe, shouldSatisfy)
 import Test.QuickCheck (Arbitrary (arbitrary), Gen, Testable (property), chooseInt, suchThat, (==>))
 
-import Triangles (Line (..), Point, baroCenter, doubleEq, intersection, isParallelTo, lineThrough, perpendicularThrough)
+import Geometry (Line (..), Point, baroCenter, doubleEq, intersection, isParallelTo, lineThrough, perpendicularThrough)
 
 instance Arbitrary Line where
     arbitrary = do
