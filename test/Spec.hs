@@ -8,7 +8,7 @@ import Control.Monad (liftM2)
 import Test.Hspec (describe, hspec, it, shouldBe, shouldSatisfy)
 import Test.QuickCheck (Arbitrary (arbitrary), Gen, Testable (property), chooseInt, suchThat, (==>))
 
-import Geometry (Line (..), Point, baroCenter, doubleEq, intersection, isParallelTo, lineThrough, perpendicularThrough)
+import Geometry (Line (..), Point, baroCenter, doubleEq, intersection, isParallelTo, lineThrough, mkLine, perpendicularThrough)
 
 instance Arbitrary Line where
     arbitrary = do
@@ -21,7 +21,7 @@ instance Arbitrary Line where
             else do
                 a <- randDouble
                 b <- randDouble
-                return $ Line a b
+                return $ mkLine a b
 
 main :: IO ()
 main = hspec $ do
@@ -40,9 +40,9 @@ main = hspec $ do
                                 y1 `shouldSatisfy` doubleEq y2
 
     describe "perpendicularThrough" $ do
-        it "gives the line that's perpendicular to a given line and goes throug a given point" $ do
-            perpendicularThrough (2, 1) (Line 0.5 0) `shouldBe` Line (-2) 5
-            perpendicularThrough (2, 1) (Vertical 5) `shouldBe` Line 0 1
+        it "gives the line that's perpendicular to a given line and goes through a given point" $ do
+            perpendicularThrough (2, 1) (mkLine 0.5 0) `shouldBe` mkLine (-2) 5
+            perpendicularThrough (2, 1) (Vertical 5) `shouldBe` mkLine 0 1
         it "gives back the same line if applied twice" $ do
             property $ \((startingLine, point) :: (Line, Point)) ->
                 let secondLine = perpendicularThrough point startingLine

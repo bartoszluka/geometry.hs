@@ -1,5 +1,6 @@
 module Geometry (
     lineThrough,
+    mkLine,
     intersection,
     doubleEq,
     Line (..),
@@ -15,11 +16,17 @@ import Text.Printf (printf)
 type Point = (Double, Double)
 
 data Line
-    = Vertical Double -- x = c
-    | Line -- y = ax + b
+    = -- | x = c
+      Vertical Double
+    | -- | y = ax + b
+      Line
         ( Double -- a
         , Double -- b
         )
+mkLine :: Double -> Double -> Line
+mkLine = curry Line
+
+-- mkLine a b = Line (a, b)
 
 epsilon :: Double
 epsilon = 1e-5
@@ -72,13 +79,14 @@ intersection (Vertical _x) (Vertical _x') = let infinity = 1 / 0 in (infinity, i
 
 perpendicularThrough :: Point -> Line -> Line
 perpendicularThrough (_px, py) (Vertical _) = Line (0, py)
-perpendicularThrough (px, _py) (Line (a, _)) =
+perpendicularThrough (px, py) (Line (a, _)) =
     if a == 0
         then Vertical px
-        else Line (-1 / a, 1 / a * px)
+        else Line (-1 / a, py + px / a)
 
 isParallelTo :: Line -> Line -> Bool
 isParallelTo (Line (a1, _)) (Line (a2, _)) =
     doubleEq a1 a2
 isParallelTo (Vertical _) (Vertical _) = True
 isParallelTo _ _ = False
+
