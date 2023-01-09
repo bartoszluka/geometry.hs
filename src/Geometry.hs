@@ -1,25 +1,49 @@
 {-# LANGUAGE NamedFieldPuns #-}
+
 module Geometry (
+    Point (..),
     onTheSameLine,
     lineThrough,
-    pointEq,
     Circle (..),
     CircleCreationError (..),
     mkLine,
     intersection,
     doubleEq,
     Line (..),
-    Point,
     baroCenter,
     perpendicularThrough,
     toStr,
     isParallelTo,
     circleThroughPoints,
+    mkPoint,
+    mapPoint,
 ) where
 
+import GHC.Float.RealFracMethods (truncateDoubleInteger)
 import Text.Printf (printf)
 
-type Point = (Double, Double)
+newtype Point = Point {coordinates :: (Double, Double)}
+
+mkPoint :: Double -> Double -> Point
+mkPoint = curry Point
+
+mapPoint :: (Double -> Double) -> Point -> Point
+mapPoint f (Point{coordinates = (x, y)}) = Point (f x, f y)
+
+instance Eq Point where
+    (Point{coordinates = (x1, y1)}) == (Point{coordinates = (x2, y2)}) =
+        x1 `doubleEq` x2 && y1 `doubleEq` y2
+
+instance Show Point where
+    show (Point{coordinates = (x, y)}) =
+        printf "(%s, %s)" (prettify x) (prettify y)
+      where
+        prettify :: Double -> String
+        prettify number =
+            let wholeValue = truncateDoubleInteger number
+             in if abs (fromInteger wholeValue - number) < epsilon
+                    then printf "%d" wholeValue
+                    else printf "%.2f" number
 
 data Line
     = -- | x = c
@@ -31,8 +55,6 @@ data Line
         )
 mkLine :: Double -> Double -> Line
 mkLine = curry Line
-
--- mkLine a b = Line (a, b)
 
 epsilon :: Double
 epsilon = 1e-5
@@ -57,7 +79,7 @@ doubleEq :: Double -> Double -> Bool
 doubleEq x y = abs (x - y) < epsilon
 
 lineThrough :: Point -> Point -> Line
-lineThrough (xa, ya) (xb, yb) =
+lineThrough (Point{coordinates = (xa, ya)}) (Point{coordinates = (xb, yb)}) =
     case xa - xb of
         0 -> Vertical xa
         _nonZero ->
@@ -76,16 +98,16 @@ baroCenter pointA pointB pointC =
 intersection :: Line -> Line -> Point
 intersection (Line (a1, b1)) (Line (a2, b2)) =
     let a = -(b1 - b2) / (a1 - a2)
-     in (a, a * a1 + b1)
+     in Point (a, a * a1 + b1)
 intersection (Line (a, b)) (Vertical x) =
-    (x, a * x + b)
+    Point (x, a * x + b)
 intersection (Vertical x) (Line (a, b)) =
-    (x, a * x + b)
-intersection (Vertical _x) (Vertical _x') = let infinity = 1 / 0 in (infinity, infinity)
+    Point (x, a * x + b)
+intersection (Vertical _x) (Vertical _x') = let infinity = 1 / 0 in Point (infinity, infinity)
 
 perpendicularThrough :: Point -> Line -> Line
-perpendicularThrough (_px, py) (Vertical _) = Line (0, py)
-perpendicularThrough (px, py) (Line (a, _)) =
+perpendicularThrough (Point{coordinates = (_px, py)}) (Vertical _) = Line (0, py)
+perpendicularThrough (Point{coordinates = (px, py)}) (Line (a, _)) =
     if a == 0
         then Vertical px
         else Line (-1 / a, py + px / a)
@@ -100,11 +122,11 @@ data Circle = Circle {center :: Point, radius :: Double}
 
 instance Eq Circle where
     (Circle{center = c1, radius = r1}) == (Circle{center = c2, radius = r2}) =
-        c1 `pointEq` c2 && r1 `doubleEq` r2
+        c1 == c2 && r1 `doubleEq` r2
 
 instance Show Circle where
-    show (Circle{center = (x, y), radius}) =
-        printf "center: (%.2f, %.2f), radius: %.2f" x y radius
+    show (Circle{center, radius}) =
+        printf "center: %s, radius: %.2f" (show center) radius
 
 data CircleCreationError
     = PointsOnTheSameLine (Point, Point, Point)
@@ -113,11 +135,11 @@ data CircleCreationError
     deriving (Show, Eq)
 
 circleThroughPoints :: Point -> Point -> Point -> Either CircleCreationError Circle
-circleThroughPoints p1@(x1, y1) p2@(x2, y2) p3@(x3, y3)
-    | p1 `pointEq` p2 && p2 `pointEq` p3 = Left $ ThreePointsAreTheSame (p1, p2, p3)
-    | p1 `pointEq` p2 = Left $ TwoPointsAreTheSame (p1, p2)
-    | p2 `pointEq` p3 = Left $ TwoPointsAreTheSame (p2, p3)
-    | p1 `pointEq` p3 = Left $ TwoPointsAreTheSame (p1, p3)
+circleThroughPoints p1@(Point{coordinates = (x1, y1)}) p2@(Point{coordinates = (x2, y2)}) p3@(Point{coordinates = (x3, y3)})
+    | p1 == p2 && p2 == p3 = Left $ ThreePointsAreTheSame (p1, p2, p3)
+    | p1 == p2 = Left $ TwoPointsAreTheSame (p1, p2)
+    | p2 == p3 = Left $ TwoPointsAreTheSame (p2, p3)
+    | p1 == p3 = Left $ TwoPointsAreTheSame (p1, p3)
     | onTheSameLine p1 p2 p3 = Left $ PointsOnTheSameLine (p1, p2, p3)
     | otherwise =
         Right $
@@ -164,10 +186,7 @@ circleThroughPoints p1@(x1, y1) p2@(x2, y2) p3@(x3, y3)
                           )
                 x = (x1 ** 2 - 2 * y * y1 + y1 ** 2 - x2 ** 2 - 2 * y * y2 - y2 ** 2) / 2 * (x1 + x2)
                 r = sqrt ((x - x1) ** 2 + (y - y1) ** 2)
-             in Circle{center = (x, y), radius = r}
-
-pointEq :: (Double, Double) -> (Double, Double) -> Bool
-pointEq (x1, y1) (x2, y2) = x1 `doubleEq` x2 && y1 `doubleEq` y2
+             in Circle{center = Point (x, y), radius = r}
 
 onTheSameLine :: Point -> Point -> Point -> Bool
 onTheSameLine p1 p2 p3 = lineThrough p1 p2 == lineThrough p2 p3
