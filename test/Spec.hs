@@ -1,14 +1,15 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# HLINT ignore "Use <$>" #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use <$>" #-}
 
 import Control.Monad (liftM2)
 import Test.Hspec (describe, hspec, it, shouldBe, shouldSatisfy)
 import Test.QuickCheck (Arbitrary (arbitrary), Gen, Testable (property), chooseInt, suchThat, (==>))
 
-import Geometry (Line (..), Point, baroCenter, doubleEq, intersection, isParallelTo, lineThrough, mkLine, perpendicularThrough)
+import Geometry (Circle (..), CircleCreationError (..), Line (..), Point, baroCenter, circleThroughPoints, doubleEq, intersection, isParallelTo, lineThrough, mkLine, onTheSameLine, perpendicularThrough, pointEq)
 
 instance Arbitrary Line where
     arbitrary = do
@@ -55,3 +56,24 @@ main = hspec $ do
             baroCenter (0, 0) (4, 0) (2, 4) `shouldBe` (2.0, 1.0)
             -- equilateral
             baroCenter (0, 0) (6, 0) (3, 6 * sqrt 3 / 2) `shouldBe` (3.0, sqrt 3)
+
+    describe "circleThroughPoints" $ do
+        it "returns a circle through 3 distinct points" $ do
+            circleThroughPoints (-2, 0) (0, 2) (2, 0) `shouldBe` (Right $ Circle{center = (0, 0), radius = 2})
+        it "gives an error if 2 points are the same" $ do
+            property $ \((p1, p2) :: (Point, Point)) ->
+                not (pointEq p1 p2)
+                    ==> (circleThroughPoints p1 p1 p2 `shouldBe` Left (TwoPointsAreTheSame (p1, p1)))
+        it "gives an error if all 3 points are the same" $ do
+            property $ \(p1 :: Point) ->
+                circleThroughPoints p1 p1 p1 `shouldBe` Left (ThreePointsAreTheSame (p1, p1, p1))
+        it "gives a circle with positive radius when 3 correct points are provided" $ do
+            property $ \((p1, p2, p3) :: (Point, Point, Point)) ->
+                let (!=) = not .: pointEq
+                 in (p1 != p2 && p2 != p3 && p1 != p3 && not (onTheSameLine p1 p2 p3))
+                        ==> let (Right Circle{radius}) = circleThroughPoints p1 p2 p3
+                             in radius `shouldSatisfy` (>= 0)
+
+infixr 8 .: 
+(.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
+(.:) g f x y = g (f x y)
