@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -8,6 +7,8 @@ import Test.Hspec
 import Test.QuickCheck
 
 import Data.Composition ((.:))
+import Data.Foldable (all)
+import GHC.Float (RealFloat (isNaN))
 import Geometry (
     Circle (..),
     CircleCreationError (..),
@@ -15,14 +16,18 @@ import Geometry (
     Point (..),
     baroCenter,
     circleThroughPoints,
+    insideCircle,
     intersection,
+    isOnTheCircle,
     isParallelTo,
+    isPerpendicularTo,
     lineThrough,
     mkLine,
     onTheSameLine,
     perpendicularThrough,
-    (~=),
+    tangentThrough,
     (!~=),
+    (~=),
  )
 
 instance Arbitrary Line where
@@ -56,19 +61,19 @@ main = hspec $ do
 
     describe "perpendicularThrough" $ do
         it "gives the line that's perpendicular to a given line and goes through a given point" $ do
-            perpendicularThrough (Point (2, 1)) (mkLine 0.5 0) `shouldBe` mkLine (-2) 5
-            perpendicularThrough (Point (2, 1)) (Vertical 5) `shouldBe` mkLine 0 1
+            (mkLine 0.5 0 `perpendicularThrough` Point (2, 1)) `shouldBe` mkLine (-2) 5
+            (Vertical 5 `perpendicularThrough` Point (2, 1)) `shouldBe` mkLine 0 1
 
         it "gives back line parallel to the provided one if applied twice" $ do
             property $ \(line, point) ->
-                let perpendicular = perpendicularThrough point
+                let perpendicular = flip perpendicularThrough point
                  in (perpendicular . perpendicular) line `shouldSatisfy` isParallelTo line
 
         it "gives back the same line if applied twice and through the intersection with the first perpendicular line" $ do
             property $ \(startingLine, point) ->
-                let secondLine = perpendicularThrough point startingLine
+                let secondLine = startingLine `perpendicularThrough` point
                     intersectionPoint = intersection secondLine startingLine
-                 in perpendicularThrough intersectionPoint secondLine `shouldBe` startingLine
+                 in (secondLine `perpendicularThrough` intersectionPoint) `shouldBe` startingLine
 
     describe "baroCenter" $ do
         it "gives barometric center of a triangle" $ do
@@ -82,13 +87,22 @@ main = hspec $ do
             circleThroughPoints (Point (-2, 0)) (Point (0, 2)) (Point (2, 0))
                 `shouldBe` (Right $ Circle{center = Point (0, 0), radius = 2})
 
-        it "returns a circle that does not have NaN values" $
-            circleThroughPoints (Point (-2, 0)) (Point (2, 2)) (Point (2, 0))
-                `shouldSatisfy` ( \case
-                                    Right (Circle{center = Point{coordinates = (x, y)}, radius}) ->
-                                        and $ not . isNaN <$> [x, y, radius]
-                                    Left _ -> False
-                                )
+        it "returns a circle that does not have any NaN values" $ do
+            property $ \(x, y1, y2, y3) ->
+                (y1 `notElem` [y2, y3] && x !~= 0)
+                    ==> let
+                            noNaNs (p1, p2, p3) = case circleThroughPoints p1 p2 p3 of
+                                Right (Circle{center = Point{coordinates = (x0, y)}, radius}) ->
+                                    (not . any isNaN) [x0, y, radius]
+                                Left _ -> False
+                         in
+                            do
+                                (Point (x, y1), Point (-x, y2), Point (-x, y3)) `shouldSatisfy` noNaNs
+                                (Point (-x, y1), Point (x, y2), Point (-x, y3)) `shouldSatisfy` noNaNs
+                                (Point (-x, y1), Point (-x, y2), Point (x, y3)) `shouldSatisfy` noNaNs
+                                (Point (-x, y1), Point (x, y2), Point (x, y3)) `shouldSatisfy` noNaNs
+                                (Point (x, y1), Point (-x, y2), Point (x, y3)) `shouldSatisfy` noNaNs
+                                (Point (x, y1), Point (x, y2), Point (-x, y3)) `shouldSatisfy` noNaNs
 
         it "returns a valid circle through 3 distinct points around 0" $
             property $ \p ->
@@ -113,3 +127,15 @@ main = hspec $ do
                         Right Circle{radius} ->
                             radius `shouldSatisfy` (> 0)
                         Left err -> expectationFailure $ "preconditions are not exhaustive; edge case found with error: " ++ show err
+
+    describe "tangent" $ do
+        it "returns a line that's perpendicular to a radius going through an intersection point" $
+            property $ \(center, radius, point) ->
+                let circle = Circle center radius
+                    intersectionWithRadiusIsOnTheCircles (Right (line1, line2)) =
+                        (intersection line1 (line1 `perpendicularThrough` center) `isOnTheCircle` circle)
+                            && (intersection line2 (line2 `perpendicularThrough` center) `isOnTheCircle` circle)
+                    intersectionWithRadiusIsOnTheCircles (Left _) = False
+                 in not (point `insideCircle` circle)
+                        ==> (circle `tangentThrough` point)
+                        `shouldSatisfy` intersectionWithRadiusIsOnTheCircles

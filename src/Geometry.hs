@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Geometry (
@@ -19,6 +20,11 @@ module Geometry (
     circleThroughPoints,
     mkPoint,
     mapPoint,
+    isPerpendicularTo,
+    insideCircle,
+    tangentThrough,
+    TangentError (..),
+    isOnTheCircle,
 ) where
 
 import GHC.Float.RealFracMethods (truncateDoubleInteger)
@@ -100,8 +106,8 @@ baroCenter :: Point -> Point -> Point -> Point
 baroCenter pointA pointB pointC =
     intersection height1 height2
   where
-    height1 = perpendicularThrough pointC (lineThrough pointA pointB)
-    height2 = perpendicularThrough pointB (lineThrough pointA pointC)
+    height1 = lineThrough pointA pointB `perpendicularThrough` pointC
+    height2 = lineThrough pointA pointC `perpendicularThrough` pointB
 
 intersection :: Line -> Line -> Point
 intersection (Line (a1, b1)) (Line (a2, b2)) =
@@ -113,9 +119,9 @@ intersection (Vertical x) (Line (a, b)) =
     Point (x, a * x + b)
 intersection (Vertical _x) (Vertical _x') = let infinity = 1 / 0 in Point (infinity, infinity)
 
-perpendicularThrough :: Point -> Line -> Line
-perpendicularThrough (Point{coordinates = (_px, py)}) (Vertical _) = Line (0, py)
-perpendicularThrough (Point{coordinates = (px, py)}) (Line (a, _)) =
+perpendicularThrough :: Line -> Point -> Line
+perpendicularThrough (Vertical _) (Point{coordinates = (_px, py)}) = Line (0, py)
+perpendicularThrough (Line (a, _)) (Point{coordinates = (px, py)}) =
     if a == 0
         then Vertical px
         else Line (-1 / a, py + px / a)
@@ -125,6 +131,13 @@ isParallelTo (Line (a1, _)) (Line (a2, _)) =
     a1 ~= a2
 isParallelTo (Vertical _) (Vertical _) = True
 isParallelTo _ _ = False
+
+isPerpendicularTo :: Line -> Line -> Bool
+isPerpendicularTo (Line (a1, _)) (Line (a2, _)) =
+    a1 !~= 0 && a2 !~= 0 && a1 ~= (-1 / a2)
+isPerpendicularTo (Vertical _) (Line (0, _)) = True
+isPerpendicularTo (Line (0, _)) (Vertical _) = True
+isPerpendicularTo _ _ = False
 
 data Circle = Circle {center :: Point, radius :: Double}
 
@@ -148,36 +161,36 @@ circleThroughPoints p1@(Point{coordinates = (x1, y1)}) p2@(Point{coordinates = (
     | p1 == p2 = Left $ TwoPointsAreTheSame (p1, p2)
     | p2 == p3 = Left $ TwoPointsAreTheSame (p2, p3)
     | p1 == p3 = Left $ TwoPointsAreTheSame (p1, p3)
-    | onTheSameLine p1 p2 p3 = Left $ PointsOnTheSameLine (p1, p2, p3)
     | otherwise =
-        Right $
-            -- calculations
-            -- (x - x1^2) + (y - y2^2) = r^2
-            -- (x - x2^2) + (y - y2^2) = r^2
-            -- (x - x3^2) + (y - y3^2) = r^2
-            --
-            -- (x - x1^2) + (y - y2^2) = (x - x2^2) + (y - y2^2)
-            -- (x - x1^2) + (y - y2^2) - (x - x2^2) - (y - y2^2) = 0
-            -- x^2 - 2*x*x1 + x1^2 + y^2 - 2*y*y1 + y1^2 - x^2 - 2*x*x2 - x2^2 - y^2 - 2*y*y2 - y2^2 = 0
-            -- - 2*x*x1 + x1^2 - 2*y*y1 + y1^2 - 2*x*x2 - x2^2 - 2*y*y2 - y2^2 = 0
-            -- 2*x*x1 = x1^2 - 2*y*y1 + y1^2 - 2*x*x2 - x2^2 - 2*y*y2 - y2^2
-            -- 2*x*x1 + 2*x*x2 = x1^2 - 2*y*y1 + y1^2 - x2^2 - 2*y*y2 - y2^2
-            -- x*2*(x1+x2) = x1^2 - 2*y*y1 + y1^2 - x2^2 - 2*y*y2 - y2^2
-            -- x = (x1^2 - 2*y*y1 + y1^2 - x2^2 - 2*y*y2 - y2^2) / 2*(x1+x2)
-            --
-            -- (x - x3^2) + (y - y3^2) = r^2
-            -- - 2*x*x3 + x3^2 - 2*y*y3 + y3^2 - 2*x*x2 - x2^2 - 2*y*y2 - y2^2 = 0
-            -- - 2*x*(x2+x3) + x3^2 - 2*y*y3 + y3^2 - x2^2 - 2*y*y2 - y2^2 = 0
-            -- -((x1^2 - 2*y*y1 + y1^2 - x2^2 - 2*y*y2 - y2^2) / (x1+x2))*(x2+x3) + x3^2 - 2*y*y3 + y3^2 - x2^2 - 2*y*y2 - y2^2 = 0
-            -- - x1^2/ (x1+x2)*(x2+x3) + 2*y*y1 / (x1+x2)*(x2+x3) - y1^2/ (x1+x2)*(x2+x3) + x2^2/ (x1+x2)*(x2+x3) + 2*y*y2/ (x1+x2)*(x2+x3) + y2^2/ (x1+x2)*(x2+x3)  + x3^2 - 2*y*y3 + y3^2 - x2^2 - 2*y*y2 - y2^2 = 0
-            -- 2*y*y1 / (x1+x2)*(x2+x3)+ 2*y*y2/ (x1+x2)*(x2+x3) - 2*y*y3 - 2*y*y2 - x1^2/ (x1+x2)*(x2+x3)  - y1^2/ (x1+x2)*(x2+x3) + x2^2/ (x1+x2)*(x2+x3)  + y2^2/ (x1+x2)*(x2+x3)  + x3^2 + y3^2 - x2^2 - y2^2 = 0
-            -- y*(2*y1 / (x1+x2)*(x2+x3)+ 2*y2/ (x1+x2)*(x2+x3) - 2*y3 - 2*y2) - x1^2/ (x1+x2)*(x2+x3)  - y1^2/ (x1+x2)*(x2+x3) + x2^2/ (x1+x2)*(x2+x3)  + y2^2/ (x1+x2)*(x2+x3)  + x3^2 + y3^2 - x2^2 - y2^2 = 0
-            -- - y*(2*y1 / (x1+x2)*(x2+x3)+ 2*y2/ (x1+x2)*(x2+x3) - 2*y3 - 2*y2) = - x1^2/ (x1+x2)*(x2+x3)  - y1^2/ (x1+x2)*(x2+x3) + x2^2/ (x1+x2)*(x2+x3)  + y2^2/ (x1+x2)*(x2+x3)  + x3^2 + y3^2 - x2^2 - y2^2
-            -- - y = (- x1^2/ (x1+x2)*(x2+x3)  - y1^2/ (x1+x2)*(x2+x3) + x2^2/ (x1+x2)*(x2+x3)  + y2^2/ (x1+x2)*(x2+x3)  + x3^2 + y3^2 - x2^2 - y2^2) / (2*y1 / (x1+x2)*(x2+x3)+ 2*y2/ (x1+x2)*(x2+x3) - 2*y3 - 2*y2)
+        -- calculations
+        -- (x - x1^2) + (y - y2^2) = r^2
+        -- (x - x2^2) + (y - y2^2) = r^2
+        -- (x - x3^2) + (y - y3^2) = r^2
+        --
+        -- (x - x1^2) + (y - y2^2) = (x - x2^2) + (y - y2^2)
+        -- (x - x1^2) + (y - y2^2) - (x - x2^2) - (y - y2^2) = 0
+        -- x^2 - 2*x*x1 + x1^2 + y^2 - 2*y*y1 + y1^2 - x^2 - 2*x*x2 - x2^2 - y^2 - 2*y*y2 - y2^2 = 0
+        -- - 2*x*x1 + x1^2 - 2*y*y1 + y1^2 - 2*x*x2 - x2^2 - 2*y*y2 - y2^2 = 0
+        -- 2*x*x1 = x1^2 - 2*y*y1 + y1^2 - 2*x*x2 - x2^2 - 2*y*y2 - y2^2
+        -- 2*x*x1 + 2*x*x2 = x1^2 - 2*y*y1 + y1^2 - x2^2 - 2*y*y2 - y2^2
+        -- x*2*(x1+x2) = x1^2 - 2*y*y1 + y1^2 - x2^2 - 2*y*y2 - y2^2
+        -- x = (x1^2 - 2*y*y1 + y1^2 - x2^2 - 2*y*y2 - y2^2) / 2*(x1+x2)
+        --
+        -- (x - x3^2) + (y - y3^2) = r^2
+        -- - 2*x*x3 + x3^2 - 2*y*y3 + y3^2 - 2*x*x2 - x2^2 - 2*y*y2 - y2^2 = 0
+        -- - 2*x*(x2+x3) + x3^2 - 2*y*y3 + y3^2 - x2^2 - 2*y*y2 - y2^2 = 0
+        -- -((x1^2 - 2*y*y1 + y1^2 - x2^2 - 2*y*y2 - y2^2) / (x1+x2))*(x2+x3) + x3^2 - 2*y*y3 + y3^2 - x2^2 - 2*y*y2 - y2^2 = 0
+        -- - x1^2/ (x1+x2)*(x2+x3) + 2*y*y1 / (x1+x2)*(x2+x3) - y1^2/ (x1+x2)*(x2+x3) + x2^2/ (x1+x2)*(x2+x3) + 2*y*y2/ (x1+x2)*(x2+x3) + y2^2/ (x1+x2)*(x2+x3)  + x3^2 - 2*y*y3 + y3^2 - x2^2 - 2*y*y2 - y2^2 = 0
+        -- 2*y*y1 / (x1+x2)*(x2+x3)+ 2*y*y2/ (x1+x2)*(x2+x3) - 2*y*y3 - 2*y*y2 - x1^2/ (x1+x2)*(x2+x3)  - y1^2/ (x1+x2)*(x2+x3) + x2^2/ (x1+x2)*(x2+x3)  + y2^2/ (x1+x2)*(x2+x3)  + x3^2 + y3^2 - x2^2 - y2^2 = 0
+        -- y*(2*y1 / (x1+x2)*(x2+x3)+ 2*y2/ (x1+x2)*(x2+x3) - 2*y3 - 2*y2) - x1^2/ (x1+x2)*(x2+x3)  - y1^2/ (x1+x2)*(x2+x3) + x2^2/ (x1+x2)*(x2+x3)  + y2^2/ (x1+x2)*(x2+x3)  + x3^2 + y3^2 - x2^2 - y2^2 = 0
+        -- - y*(2*y1 / (x1+x2)*(x2+x3)+ 2*y2/ (x1+x2)*(x2+x3) - 2*y3 - 2*y2) = - x1^2/ (x1+x2)*(x2+x3)  - y1^2/ (x1+x2)*(x2+x3) + x2^2/ (x1+x2)*(x2+x3)  + y2^2/ (x1+x2)*(x2+x3)  + x3^2 + y3^2 - x2^2 - y2^2
+        -- - y = (- x1^2/ (x1+x2)*(x2+x3)  - y1^2/ (x1+x2)*(x2+x3) + x2^2/ (x1+x2)*(x2+x3)  + y2^2/ (x1+x2)*(x2+x3)  + x3^2 + y3^2 - x2^2 - y2^2) / (2*y1 / (x1+x2)*(x2+x3)+ 2*y2/ (x1+x2)*(x2+x3) - 2*y3 - 2*y2)
 
-            if (x1 + x2) !~= 0
-                then unsafeCreateCircle x1 y1 x2 y2 x3 y3
-                else unsafeCreateCircle x3 y3 x2 y2 x1 y1
+        if
+                | (x1 + x2) !~= 0 -> Right $ unsafeCreateCircle x1 y1 x2 y2 x3 y3
+                | (x2 + x3) !~= 0 -> Right $ unsafeCreateCircle x3 y3 x2 y2 x1 y1
+                | (x1 + x3) !~= 0 -> Right $ unsafeCreateCircle x1 y1 x3 y3 x2 y2
+                | otherwise -> Left $ PointsOnTheSameLine (p1, p2, p3)
 
 unsafeCreateCircle :: Double -> Double -> Double -> Double -> Double -> Double -> Circle
 unsafeCreateCircle x1 y1 x2 y2 x3 y3 =
@@ -199,5 +212,18 @@ unsafeCreateCircle x1 y1 x2 y2 x3 y3 =
         r = sqrt ((x - x1) ** 2 + (y - y1) ** 2)
      in Circle{center = Point (x, y), radius = r}
 
+data TangentError = PointInsindeCircle deriving (Show, Eq)
+
+tangentThrough :: Circle -> Point -> Either TangentError (Line, Line)
+tangentThrough = undefined
+
 onTheSameLine :: Point -> Point -> Point -> Bool
 onTheSameLine p1 p2 p3 = lineThrough p1 p2 == lineThrough p2 p3
+
+insideCircle :: Point -> Circle -> Bool
+insideCircle (Point (xp, yp)) (Circle{center = Point (xc, yc), radius = r}) =
+    (xc - xp) ** 2 + (yc - yp) ** 2 <= r ** 2
+
+isOnTheCircle :: Point -> Circle -> Bool
+isOnTheCircle (Point (xp, yp)) (Circle{center = Point (xc, yc), radius = r}) =
+    ((xc - xp) ** 2 + (yc - yp) ** 2) ~= (r ** 2)
