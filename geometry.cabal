@@ -59,6 +59,7 @@ test-suite geometry-test
       HUnit
     , QuickCheck
     , base >=4.7 && <5
+    , composition
     , geometry
     , hspec
     , hspec-contrib

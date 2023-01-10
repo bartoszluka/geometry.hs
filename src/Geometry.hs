@@ -8,6 +8,8 @@ module Geometry (
     CircleCreationError (..),
     mkLine,
     intersection,
+    (~=),
+    (!~=),
     doubleEq,
     Line (..),
     baroCenter,
@@ -71,12 +73,18 @@ instance Show Line where
     show = toStr
 
 instance Eq Line where
-    (Vertical x1) == (Vertical x2) = doubleEq x1 x2
-    (Line (a1, b1)) == (Line (a2, b2)) = doubleEq a1 a2 && doubleEq b1 b2
+    (Vertical x1) == (Vertical x2) = x1 ~= x2
+    (Line (a1, b1)) == (Line (a2, b2)) = a1 ~= a2 && b1 ~= b2
     _ == _ = False
 
 doubleEq :: Double -> Double -> Bool
 doubleEq x y = abs (x - y) < epsilon
+
+(~=) :: Double -> Double -> Bool
+(~=) = doubleEq
+
+(!~=) :: Double -> Double -> Bool
+x !~= y = not $ x ~= y
 
 lineThrough :: Point -> Point -> Line
 lineThrough (Point{coordinates = (xa, ya)}) (Point{coordinates = (xb, yb)}) =
@@ -114,7 +122,7 @@ perpendicularThrough (Point{coordinates = (px, py)}) (Line (a, _)) =
 
 isParallelTo :: Line -> Line -> Bool
 isParallelTo (Line (a1, _)) (Line (a2, _)) =
-    doubleEq a1 a2
+    a1 ~= a2
 isParallelTo (Vertical _) (Vertical _) = True
 isParallelTo _ _ = False
 
@@ -122,7 +130,7 @@ data Circle = Circle {center :: Point, radius :: Double}
 
 instance Eq Circle where
     (Circle{center = c1, radius = r1}) == (Circle{center = c2, radius = r2}) =
-        c1 == c2 && r1 `doubleEq` r2
+        c1 == c2 && r1 ~= r2
 
 instance Show Circle where
     show (Circle{center, radius}) =
@@ -167,26 +175,29 @@ circleThroughPoints p1@(Point{coordinates = (x1, y1)}) p2@(Point{coordinates = (
             -- - y*(2*y1 / (x1+x2)*(x2+x3)+ 2*y2/ (x1+x2)*(x2+x3) - 2*y3 - 2*y2) = - x1^2/ (x1+x2)*(x2+x3)  - y1^2/ (x1+x2)*(x2+x3) + x2^2/ (x1+x2)*(x2+x3)  + y2^2/ (x1+x2)*(x2+x3)  + x3^2 + y3^2 - x2^2 - y2^2
             -- - y = (- x1^2/ (x1+x2)*(x2+x3)  - y1^2/ (x1+x2)*(x2+x3) + x2^2/ (x1+x2)*(x2+x3)  + y2^2/ (x1+x2)*(x2+x3)  + x3^2 + y3^2 - x2^2 - y2^2) / (2*y1 / (x1+x2)*(x2+x3)+ 2*y2/ (x1+x2)*(x2+x3) - 2*y3 - 2*y2)
 
-            let y =
-                    -( -x1 ** 2
-                        / (x1 + x2)
-                        * (x2 + x3)
-                        - y1 ** 2 / (x1 + x2) * (x2 + x3)
-                        + x2 ** 2 / (x1 + x2) * (x2 + x3)
-                        + y2 ** 2 / (x1 + x2) * (x2 + x3)
-                        + x3 ** 2
-                        + y3 ** 2
-                        - x2 ** 2
-                        - y2 ** 2
-                     )
-                        / ( 2 * y1 / (x1 + x2) * (x2 + x3)
-                                + 2 * y2 / (x1 + x2) * (x2 + x3)
-                                - 2 * y3
-                                - 2 * y2
-                          )
-                x = (x1 ** 2 - 2 * y * y1 + y1 ** 2 - x2 ** 2 - 2 * y * y2 - y2 ** 2) / 2 * (x1 + x2)
-                r = sqrt ((x - x1) ** 2 + (y - y1) ** 2)
-             in Circle{center = Point (x, y), radius = r}
+            if (x1 + x2) !~= 0
+                then unsafeCreateCircle x1 y1 x2 y2 x3 y3
+                else unsafeCreateCircle x3 y3 x2 y2 x1 y1
+
+unsafeCreateCircle :: Double -> Double -> Double -> Double -> Double -> Double -> Circle
+unsafeCreateCircle x1 y1 x2 y2 x3 y3 =
+    let y =
+            ( (x1 ** 2 + y1 ** 2 - x2 ** 2 - y2 ** 2)
+                / (x1 + x2)
+                * (x2 + x3)
+                - x3 ** 2
+                - y3 ** 2
+                + x2 ** 2
+                + y2 ** 2
+            )
+                / 2
+                * ( ((y1 + y2) / (x1 + x2) * (x2 + x3))
+                        - y3
+                        - y2
+                  )
+        x = (x1 ** 2 + y1 ** 2 - x2 ** 2 - y2 ** 2 - 2 * y * (y1 + y2)) / 2 * (x1 + x2)
+        r = sqrt ((x - x1) ** 2 + (y - y1) ** 2)
+     in Circle{center = Point (x, y), radius = r}
 
 onTheSameLine :: Point -> Point -> Point -> Bool
 onTheSameLine p1 p2 p3 = lineThrough p1 p2 == lineThrough p2 p3

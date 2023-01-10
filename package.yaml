@@ -1,10 +1,10 @@
 name: geometry
 version: 0.1.0.0
-github: 'bartoszluka/geometry.hs'
+github: "bartoszluka/geometry.hs"
 license: BSD3
-author: 'Bartosz Łuka'
-maintainer: 'bartoszluka1@gmail.com'
-copyright: '2023 Bartosz Łuka'
+author: "Bartosz Łuka"
+maintainer: "bartoszluka1@gmail.com"
+copyright: "2023 Bartosz Łuka"
 
 extra-source-files:
   - README.md
@@ -61,3 +61,4 @@ tests:
       - hspec-contrib
       - QuickCheck
       - HUnit
+      - composition
