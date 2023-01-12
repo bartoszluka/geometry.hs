@@ -9,8 +9,8 @@ module Geometry (
     CircleCreationError (..),
     mkLine,
     intersection,
-    (~=),
-    (!~=),
+    (=~),
+    (!~),
     doubleEq,
     Line (..),
     baroCenter,
@@ -80,18 +80,18 @@ instance Show Line where
     show = toStr
 
 instance Eq Line where
-    (Vertical x1) == (Vertical x2) = x1 ~= x2
-    (Line (a1, b1)) == (Line (a2, b2)) = a1 ~= a2 && b1 ~= b2
+    (Vertical x1) == (Vertical x2) = x1 =~ x2
+    (Line (a1, b1)) == (Line (a2, b2)) = a1 =~ a2 && b1 =~ b2
     _ == _ = False
 
 doubleEq :: Double -> Double -> Bool
 doubleEq x y = abs (x - y) < epsilon
 
-(~=) :: Double -> Double -> Bool
-(~=) = doubleEq
+(=~) :: Double -> Double -> Bool
+(=~) = doubleEq
 
-(!~=) :: Double -> Double -> Bool
-x !~= y = not $ x ~= y
+(!~) :: Double -> Double -> Bool
+x !~ y = not $ x =~ y
 
 lineThrough :: Point -> Point -> Line
 lineThrough (Point{coordinates = (xa, ya)}) (Point{coordinates = (xb, yb)}) =
@@ -129,13 +129,13 @@ perpendicularThrough (Line (a, _)) (Point{coordinates = (px, py)}) =
 
 isParallelTo :: Line -> Line -> Bool
 isParallelTo (Line (a1, _)) (Line (a2, _)) =
-    a1 ~= a2
+    a1 =~ a2
 isParallelTo (Vertical _) (Vertical _) = True
 isParallelTo _ _ = False
 
 isPerpendicularTo :: Line -> Line -> Bool
 isPerpendicularTo (Line (a1, _)) (Line (a2, _)) =
-    a1 !~= 0 && a2 !~= 0 && a1 ~= (-1 / a2)
+    a1 !~ 0 && a2 !~ 0 && a1 =~ (-1 / a2)
 isPerpendicularTo (Vertical _) (Line (0, _)) = True
 isPerpendicularTo (Line (0, _)) (Vertical _) = True
 isPerpendicularTo _ _ = False
@@ -144,7 +144,7 @@ data Circle = Circle {center :: Point, radius :: Double}
 
 instance Eq Circle where
     (Circle{center = c1, radius = r1}) == (Circle{center = c2, radius = r2}) =
-        c1 == c2 && r1 ~= r2
+        c1 == c2 && r1 =~ r2
 
 instance Show Circle where
     show (Circle{center, radius}) =
@@ -188,9 +188,9 @@ circleThroughPoints p1@(Point{coordinates = (x1, y1)}) p2@(Point{coordinates = (
         -- - y = (- x1^2/ (x1+x2)*(x2+x3)  - y1^2/ (x1+x2)*(x2+x3) + x2^2/ (x1+x2)*(x2+x3)  + y2^2/ (x1+x2)*(x2+x3)  + x3^2 + y3^2 - x2^2 - y2^2) / (2*y1 / (x1+x2)*(x2+x3)+ 2*y2/ (x1+x2)*(x2+x3) - 2*y3 - 2*y2)
 
         if
-                | (x1 + x2) !~= 0 -> Right $ unsafeCreateCircle x1 y1 x2 y2 x3 y3
-                | (x2 + x3) !~= 0 -> Right $ unsafeCreateCircle x3 y3 x2 y2 x1 y1
-                | (x1 + x3) !~= 0 -> Right $ unsafeCreateCircle x1 y1 x3 y3 x2 y2
+                | (x1 + x2) !~ 0 -> Right $ unsafeCreateCircle x1 y1 x2 y2 x3 y3
+                | (x2 + x3) !~ 0 -> Right $ unsafeCreateCircle x3 y3 x2 y2 x1 y1
+                | (x1 + x3) !~ 0 -> Right $ unsafeCreateCircle x1 y1 x3 y3 x2 y2
                 | otherwise -> Left $ PointsOnTheSameLine (p1, p2, p3)
 
 unsafeCreateCircle :: Double -> Double -> Double -> Double -> Double -> Double -> Circle
@@ -234,4 +234,4 @@ insideCircle (Point (xp, yp)) (Circle{center = Point (xc, yc), radius = r}) =
 
 isOnTheCircle :: Point -> Circle -> Bool
 isOnTheCircle (Point (xp, yp)) (Circle{center = Point (xc, yc), radius = r}) =
-    ((xc - xp) ** 2 + (yc - yp) ** 2) ~= (r ** 2)
+    ((xc - xp) ** 2 + (yc - yp) ** 2) =~ (r ** 2)

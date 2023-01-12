@@ -6,9 +6,6 @@
 import Test.Hspec
 import Test.QuickCheck
 
-import Data.Composition ((.:))
-import Data.Foldable (all)
-import GHC.Float (RealFloat (isNaN))
 import Geometry (
     Circle (..),
     CircleCreationError (..),
@@ -20,14 +17,12 @@ import Geometry (
     intersection,
     isOnTheCircle,
     isParallelTo,
-    isPerpendicularTo,
     lineThrough,
     mkLine,
     onTheSameLine,
     perpendicularThrough,
     tangentThrough,
-    (!~=),
-    (~=),
+    (!~),
  )
 
 instance Arbitrary Line where
@@ -89,7 +84,7 @@ main = hspec $ do
 
         it "returns a circle that does not have any NaN values" $ do
             property $ \(x, y1, y2, y3) ->
-                (y1 `notElem` [y2, y3] && x !~= 0)
+                (y1 `notElem` [y2, y3] && x !~ 0)
                     ==> let
                             noNaNs (p1, p2, p3) = case circleThroughPoints p1 p2 p3 of
                                 Right (Circle{center = Point{coordinates = (x0, y)}, radius}) ->
@@ -107,7 +102,7 @@ main = hspec $ do
         it "returns a valid circle through 3 distinct points around 0" $
             property $ \p ->
                 let
-                 in (p !~= 0)
+                 in (p !~ 0)
                         ==> circleThroughPoints (Point (-p, 0)) (Point (0, p)) (Point (p, 0))
                         `shouldBe` (Right $ Circle{center = Point (0, 0), radius = abs p})
 
