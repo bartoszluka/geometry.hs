@@ -25,6 +25,7 @@ module Geometry (
     tangentThrough,
     TangentError (..),
     isOnTheCircle,
+    circleWithCenterAndThrough,
 ) where
 
 import GHC.Float.RealFracMethods (truncateDoubleInteger)
@@ -211,6 +212,13 @@ unsafeCreateCircle x1 y1 x2 y2 x3 y3 =
         x = (x1 ** 2 + y1 ** 2 - x2 ** 2 - y2 ** 2 - 2 * y * (y1 + y2)) / 2 * (x1 + x2)
         r = sqrt ((x - x1) ** 2 + (y - y1) ** 2)
      in Circle{center = Point (x, y), radius = r}
+
+distance :: Point -> Point -> Double
+distance (Point{coordinates = (x1, y1)}) (Point{coordinates = (x2, y2)}) =
+    sqrt ((x1 - x2) ** 2 + (y1 - y2) ** 2)
+
+circleWithCenterAndThrough :: Point -> Point -> Circle
+circleWithCenterAndThrough center point = Circle center (distance center point)
 
 data TangentError = PointInsindeCircle deriving (Show, Eq)
 

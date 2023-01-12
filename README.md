@@ -8,5 +8,5 @@ The goal is not clearly defined yet but I will implement more shapes like circle
 TODO:
 
 - [ ] creating rectangles
-- [ ] creating circles
+- [x] creating circles
 - [ ] interactions (e.g. calculating intersections)
